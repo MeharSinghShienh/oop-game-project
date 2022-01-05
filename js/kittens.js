@@ -1,6 +1,7 @@
 // This section contains some game constants
-var GAME_WIDTH = 375;
-var GAME_HEIGHT = 500;
+//375 default
+var GAME_WIDTH = 1000;
+var GAME_HEIGHT = 660;
 
 var ENEMY_WIDTH = 75;
 var ENEMY_HEIGHT = 156;
@@ -12,6 +13,7 @@ var PLAYER_HEIGHT = 54;
 // These two constants keep us from using "magic numbers" in our code
 var LEFT_ARROW_CODE = 37;
 var RIGHT_ARROW_CODE = 39;
+var ENTER_CODE = 13;
 
 // These two constants allow us to DRY
 var MOVE_LEFT = 'left';
@@ -19,18 +21,23 @@ var MOVE_RIGHT = 'right';
 
 // Preload game images
 var images = {};
-['enemy.png', 'stars.png', 'player.png'].forEach(imgName => {
+['enemy.png', 'space1.jfif', 'player.png'].forEach(imgName => {
     var img = document.createElement('img');
     img.src = 'images/' + imgName;
     images[imgName] = img;
 });
 
 
+class Entity {
+    render(ctx) {
+        ctx.drawImage(this.sprite, this.x, this.y);
+    }
+}
 
 
-
-class Enemy {
+class Enemy extends Entity {
     constructor(xPos) {
+        super();
         this.x = xPos;
         this.y = -ENEMY_HEIGHT;
         this.sprite = images['enemy.png'];
@@ -43,14 +50,12 @@ class Enemy {
         this.y = this.y + timeDiff * this.speed;
     }
 
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
 }
 
-class Player {
+class Player extends Entity {
     constructor() {
-        this.x = 2 * PLAYER_WIDTH;
+        super();
+        this.x = 6 * PLAYER_WIDTH;
         this.y = GAME_HEIGHT - PLAYER_HEIGHT - 10;
         this.sprite = images['player.png'];
     }
@@ -65,9 +70,6 @@ class Player {
         }
     }
 
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
 }
 
 
@@ -119,10 +121,11 @@ class Engine {
 
         var enemySpot;
         // Keep looping until we find a free enemy spot at random
-        while (!enemySpot || this.enemies[enemySpot]) {
+        //while (!enemySpot || this.enemies[enemySpot]) {
+        while (this.enemies[enemySpot]) {
+            //enemySpot = Math.random() * enemySpots;
             enemySpot = Math.floor(Math.random() * enemySpots);
         }
-
         this.enemies[enemySpot] = new Enemy(enemySpot * ENEMY_WIDTH);
     }
 
@@ -154,6 +157,7 @@ class Engine {
     To account for the fact that we don't always have 60 frames per second, gameLoop will send a time delta argument to `update`
     You should use this parameter to scale your update appropriately
      */
+
     gameLoop() {
         // Check how long it's been since last frame
         var currentFrame = Date.now();
@@ -166,9 +170,10 @@ class Engine {
         this.enemies.forEach(enemy => enemy.update(timeDiff));
 
         // Draw everything!
-        this.ctx.drawImage(images['stars.png'], 0, 0); // draw the star bg
+        this.ctx.drawImage(images['space1.jfif'], 0, 0); // draw the star bg
         this.enemies.forEach(enemy => enemy.render(this.ctx)); // draw the enemies
         this.player.render(this.ctx); // draw the player
+
 
         // Check if any enemies should die
         this.enemies.forEach((enemy, enemyIdx) => {
@@ -183,7 +188,20 @@ class Engine {
             // If they are dead, then it's game over!
             this.ctx.font = 'bold 30px Impact';
             this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillText(this.score + ' GAME OVER', 5, 30);
+            this.ctx.fillText(this.score + ' GAME OVER, PRESS ENTER TO PLAY AGAIN', 250, 330);
+            document.addEventListener('keydown', e => {
+                if (e.keyCode === ENTER_CODE) {
+                    this.enemies.forEach((enemy, enemyIdx) => {
+                        delete this.enemies[enemyIdx];
+                    });
+                    this.score = 0;
+                    this.player = new Player();
+                    this.setupEnemies();
+                    this.lastFrame = Date.now();
+                    this.gameLoop();
+                }
+            });
+
         }
         else {
             // If player is not dead, then draw the score
@@ -198,8 +216,15 @@ class Engine {
     }
 
     isPlayerDead() {
-        // TODO: fix this function!
-        return false;
+
+        var dead = false;
+        this.enemies.forEach((enemy) => {
+            if ((enemy.x >= this.player.x) && (enemy.x < this.player.x + PLAYER_WIDTH) && (enemy.y + ENEMY_HEIGHT >= this.player.y)) {
+                dead = true; 
+            }
+        });
+        return dead;
+        
     }
 }
 
